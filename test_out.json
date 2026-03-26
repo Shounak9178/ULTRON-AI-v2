@@ -1,0 +1,52 @@
+{
+  "title": "PID Controller",
+  "description": "Discrete simulation of a PID controller for a plant",
+  "explanation": "<h3>Introduction to PID Controller</h3>\nA PID (Proportional-Integral-Derivative) controller is a control loop mechanism that is widely used in various engineering fields, including process control, robotics, and automation. The primary function of a PID controller is to regulate and maintain a desired setpoint by adjusting the control input to the system. In this essay, we will delve into the concept, theory, and working principle of PID controllers, as well as their mathematical models, real-world applications, block diagram explanations, control equations, and simulation parameters.\n\n<h4>What is a PID Controller?</h4>\nA PID controller is a type of feedback control system that uses a combination of three control actions to regulate the output of a system. The three control actions are:\n<ul>\n  <li><b>Proportional (P) control</b>: This control action is proportional to the error between the desired setpoint and the current output of the system.</li>\n  <li><b>Integral (I) control</b>: This control action is proportional to the accumulation of the error over time, which helps to eliminate steady-state errors.</li>\n  <li><b>Derivative (D) control</b>: This control action is proportional to the rate of change of the error, which helps to anticipate and prevent overshooting.</li>\n</ul>\nThe combination of these three control actions allows the PID controller to provide a robust and stable control response to changes in the system.\n\n<h4>Theory and Working Principle</h4>\nThe working principle of a PID controller is based on the concept of feedback control. The controller receives the current output of the system and compares it to the desired setpoint. The error between the two is then calculated, and the PID controller adjusts the control input to the system to minimize this error. The PID controller uses a mathematical algorithm to calculate the control input, which is based on the proportional, integral, and derivative terms.\n<br>\nThe PID controller can be operated in two modes: <b>open-loop</b> and <b>closed-loop</b>. In open-loop mode, the controller does not receive any feedback from the system, and the control input is calculated based solely on the setpoint. In closed-loop mode, the controller receives feedback from the system, and the control input is adjusted based on the error between the setpoint and the current output.\n\n<h4>Mathematical Model</h4>\nThe mathematical model of a PID controller can be represented by the following equation:\n<br>\nu(t) = Kp \\* e(t) + Ki \\* ∫e(t)dt + Kd \\* de(t)/dt\n<br>\nwhere:\n<ul>\n  <li>u(t) is the control input to the system</li>\n  <li>Kp is the proportional gain</li>\n  <li>Ki is the integral gain</li>\n  <li>Kd is the derivative gain</li>\n  <li>e(t) is the error between the setpoint and the current output</li>\n  <li>t is time</li>\n</ul>\nThe PID controller can also be represented in the frequency domain using the following transfer function:\n<br>\nG(s) = Kp + Ki/s + Kd \\* s\n<br>\nwhere:\n<ul>\n  <li>G(s) is the transfer function of the PID controller</li>\n  <li>s is the Laplace variable</li>\n</ul>\n\n<h4>Real-World Applications</h4>\nPID controllers are widely used in various real-world applications, including:\n<ul>\n  <li><b>Process control</b>: PID controllers are used to regulate temperature, pressure, flow rate, and level in process control systems.</li>\n  <li><b>Robotics</b>: PID controllers are used to control the movement of robots and robotic arms.</li>\n  <li><b>Automation</b>: PID controllers are used to control and regulate various automated systems, such as HVAC systems and lighting systems.</li>\n  <li><b>Aerospace</b>: PID controllers are used in aircraft and spacecraft to control and regulate various systems, such as altitude and velocity control.</li>\n</ul>\n\n<h4>Block Diagram Explanation</h4>\nThe block diagram of a PID controller consists of the following components:\n<ul>\n  <li><b>Setpoint</b>: This is the desired output of the system.</li>\n  <li><b>Feedback</b>: This is the current output of the system, which is fed back to the controller.</li>\n  <li><b>Error calculation</b>: This is the calculation of the error between the setpoint and the current output.</li>\n  <li><b>PID controller</b>: This is the mathematical algorithm that calculates the control input to the system.</li>\n  <li><b>Actuator</b>: This is the component that implements the control input to the system.</li>\n</ul>\nThe block diagram of a PID controller can be represented as follows:\n<br>\nSetpoint → Error calculation → PID controller → Actuator → System → Feedback → Error calculation\n\n<h4>Control or System Equations</h4>\nThe control equations for a PID controller can be represented as follows:\n<br>\nu(t) = Kp \\* e(t) + Ki \\* ∫e(t)dt + Kd \\* de(t)/dt\n<br>\nThe system equations can be represented as follows:\n<br>\ndy(t)/dt = f(y(t), u(t))\n<br>\nwhere:\n<ul>\n  <li>y(t) is the output of the system</li>\n  <li>u(t) is the control input to the system</li>\n  <li>f(y(t), u(t)) is the system dynamics</li>\n</ul>\n\n<h4>Parameters Used in Simulation</h4>\nThe parameters used in simulating a PID controller include:\n<ul>\n  <li><b>Kp</b>: The proportional gain, which determines the magnitude of the proportional term.</li>\n  <li><b>Ki</b>: The integral gain, which determines the magnitude of the integral term.</li>\n  <li><b>Kd</b>: The derivative gain, which determines the magnitude of the derivative term.</li>\n  <li><b>Setpoint</b>: The desired output of the system.</li>\n  <li><b>Initial conditions</b>: The initial values of the system states.</li>\n  <li><b>Simulation time</b>: The duration of the simulation.</li>\n  <li><b>Time step</b>: The time interval between each simulation step.</li>\n</ul>\nThese parameters can be adjusted to tune the performance of the PID controller and achieve the desired control response.",
+  "estimatedTime": "1 hour",
+  "software": "matlab",
+  "matlabToolboxes": [
+    "base"
+  ],
+  "steps": [
+    {
+      "label": "Clear and initialize",
+      "cmd": "clear; clc; close all;\nKp=10; Ki=2; Kd=1;\ntau=0.1; K_plant=1;   % plant: tau*dy/dt + y = K_plant*u\ndt=0.001; t=0:dt:10;\nr=ones(size(t)); y=zeros(size(t)); e_int=0; e_prev=0;",
+      "produces": "Initialized variables"
+    },
+    {
+      "label": "Simulate PID controller",
+      "cmd": "for k=2:length(t)\n    e=r(k)-y(k-1);\n    e_int=e_int+e*dt;\n    de=(e-e_prev)/dt;\n    u=Kp*e+Ki*e_int+Kd*de;\n    y(k)=y(k-1)+dt*(-y(k-1)+K_plant*u)/tau;\n    e_prev=e;\nend",
+      "produces": "Simulated PID controller"
+    },
+    {
+      "label": "Plot results",
+      "cmd": "figure('Name','PID');\nplot(t,r,'r--',t,y,'b-','LineWidth',2);\ntitle('PID Step Response'); xlabel('Time (s)'); ylabel('Output');\nlegend('Reference','Output'); grid on;",
+      "produces": "Plot of PID step response"
+    },
+    {
+      "label": "Calculate performance metrics",
+      "cmd": "rise_time = t(find(y >= 0.9, 1, 'first'));\nsettling_time = t(find(y >= 0.98, 1, 'first'));\novershoot = max(y) - 1;\nfprintf('Rise Time: %.4f s\n', rise_time);\nfprintf('Settling Time: %.4f s\n', settling_time);\nfprintf('Overshoot: %.4f %%\n', overshoot * 100);",
+      "produces": "Performance metrics"
+    },
+    {
+      "label": "Plot control input",
+      "cmd": "figure('Name','Control Input');\nplot(t, u, 'b-','LineWidth',2);\ntitle('Control Input'); xlabel('Time (s)'); ylabel('Control Input'); grid on;",
+      "produces": "Plot of control input"
+    },
+    {
+      "label": "Plot error",
+      "cmd": "figure('Name','Error');\nplot(t, r - y, 'b-','LineWidth',2);\ntitle('Error'); xlabel('Time (s)'); ylabel('Error'); grid on;",
+      "produces": "Plot of error"
+    },
+    {
+      "label": "Save results",
+      "cmd": "save('pid_results.mat', 't', 'y', 'u', 'r');",
+      "produces": "Saved results to file"
+    },
+    {
+      "label": "Load and verify results",
+      "cmd": "load('pid_results.mat');\nfigure('Name','Loaded Results');\nplot(t, y, 'b-','LineWidth',2);\ntitle('Loaded Results'); xlabel('Time (s)'); ylabel('Output'); grid on;",
+      "produces": "Loaded and verified results"
+    }
+  ]
+}
