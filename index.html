@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultron AI — Ultra Premium Copilot</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-gradient: radial-gradient(circle at 15% 50%, rgba(230, 92, 0, 0.08) 0%, transparent 40%),
+                 radial-gradient(circle at 85% 30%, rgba(234, 96, 0, 0.08) 0%, transparent 40%),
+                 radial-gradient(circle at 50% 80%, rgba(255, 200, 0, 0.05) 0%, transparent 50%),
+                 #050508;
+  --glass: rgba(20, 20, 25, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-border-hover: rgba(255, 255, 255, 0.12);
+  
+  /* Primary Brand Colors */
+  --mat: #ff5e00; 
+  --mat-glow: rgba(255, 94, 0, 0.4);
+  --blend: #ff8c42; 
+  --blend-glow: rgba(255, 140, 66, 0.4);
+  --kicad: #ffd700; 
+  --kicad-glow: rgba(255, 215, 0, 0.4);
+
+  --ac: #0088ff;
+  --ac-glow: rgba(0, 136, 255, 0.4);
+  --ok: #00e676;
+  --err: #ff1744;
+  --warn: #ffab00;
+
+  --text-main: #f0f0f5;
+  --text-dim: #a0a0b0;
+  --text-sub: #606070;
+
+  --f: 'Outfit', sans-serif;
+  --fc: 'JetBrains Mono', monospace;
+}
+
+body, html {
+  height: 100%;
+  background: var(--bg-gradient);
+  background-color: #050508;
+  color: var(--text-main);
+  font-family: var(--f);
+  overflow: hidden;
+  font-size: 14px;
+}
+
+/* Glassmorphism primitives */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.glass-panel {
+  background: rgba(15, 15, 20, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+}
+
+/* ── TITLEBAR ── */
+.tb {
+  height: 38px;
+  background: rgba(5, 5, 8, 0.9);
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  flex-shrink: 0;
+  user-select: none;
+  z-index: 100;
+  position: relative;
+}
+.wbtns { display: flex; gap: 8px; }
+.wb { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; transition: 0.2s }
+.wb:hover { transform: scale(1.1) }
+.wb.c { background: #ff5f57; box-shadow: 0 0 8px rgba(255,95,87,0.4) }
+.wb.m { background: #febc2e; box-shadow: 0 0 8px rgba(254,188,46,0.4) }
+.wb.x { background: #28c840; box-shadow: 0 0 8px rgba(40,200,64,0.4) }
+.tbtxt {
+  flex: 1; text-align: center; font-family: var(--fc);
+  font-size: 11px; color: var(--text-sub); letter-spacing: 1px;
+}
+.cbadge {
+  font-family: var(--fc); font-size: 10px; padding: 4px 10px;
+  border-radius: 12px; border: 1px solid;
+}
+.cbadge.ok { background: rgba(0, 230, 118, 0.1); color: var(--ok); border-color: rgba(0, 230, 118, 0.3); box-shadow: 0 0 10px rgba(0,230,118,0.2) }
+.cbadge.no { background: rgba(255, 23, 68, 0.1); color: var(--err); border-color: rgba(255, 23, 68, 0.3); }
+.cbadge.wait { background: rgba(255, 171, 0, 0.1); color: var(--warn); border-color: rgba(255, 171, 0, 0.3); }
+
+/* MAIN LAYOUT */
+.app { display: flex; height: calc(100vh - 38px - 26px); gap: 12px; padding: 12px; }
+
+/* ── LEFT PANEL (CHAT) ── */
+.chat {
+  width: 420px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.chat-hdr {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(20, 20, 25, 0.4);
+}
+.chat-ttl { font-size: 16px; font-weight: 700; background: linear-gradient(90deg, #fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.sw-badges { display: flex; gap: 6px; margin-left: auto; }
+.sw-badge {
+  font-size: 9px; padding: 4px 8px; border-radius: 6px;
+  font-family: var(--fc); font-weight: 700; border: 1px solid;
+  text-transform: uppercase; letter-spacing: 0.5px; transition: 0.3s;
+}
+.sw-badge.mat { background: rgba(255,94,0,0.1); color: var(--mat); border-color: rgba(255,94,0,0.3); }
+.sw-badge.blend { background: rgba(255,140,66,0.1); color: var(--blend); border-color: rgba(255,140,66,0.3); }
+.sw-badge.kicad { background: rgba(255,215,0,0.1); color: var(--kicad); border-color: rgba(255,215,0,0.3); }
+.sw-badge.off { opacity: 0.2; filter: grayscale(1); }
+
+/* Chat Messages */
+.msgs {
+  flex: 1; overflow-y: auto; padding: 16px;
+  display: flex; flex-direction: column; gap: 14px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+.msgs::-webkit-scrollbar { width: 4px; }
+.msgs::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+.msg { display: flex; flex-direction: column; gap: 4px; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
+
+.msg.u { align-items: flex-end; }
+.msg.a { align-items: flex-start; }
+.bub { 
+  max-width: 92%; padding: 12px 16px; border-radius: 14px; 
+  font-size: 13.5px; line-height: 1.6; word-break: break-word;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.u .bub {
+  background: linear-gradient(135deg, var(--ac), #0055ff);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.a .bub {
+  background: rgba(30,30,40,0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  border-bottom-left-radius: 4px;
+}
+.a .bub strong { color: #fff; font-weight: 600; }
+.a .bub code { font-family: var(--fc); font-size: 11.5px; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; color: #ffab00; }
+
+.mmeta { font-size: 10px; color: var(--text-sub); font-family: var(--fc); display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+.atag { font-size: 9px; padding: 2px 8px; border-radius: 8px; font-weight: 600; text-transform: uppercase; }
+.atag.auto { background: rgba(0, 136, 255, 0.1); color: var(--ac); border: 1px solid rgba(0,136,255,0.2); }
+.atag.mat { background: rgba(255,94,0,0.1); color: var(--mat); border: 1px solid rgba(255,94,0,0.2); }
+.atag.blend { background: rgba(255,140,66,0.1); color: var(--blend); border: 1px solid rgba(255,140,66,0.2); }
+.atag.kicad { background: rgba(255,215,0,0.1); color: var(--kicad); border: 1px solid rgba(255,215,0,0.2); }
+
+/* Status Text */
+.cl-ok { color: var(--ok); text-shadow: 0 0 10px rgba(0,230,118,0.3); font-weight: 500; }
+.cl-err { color: var(--err); }
+.cl-warn { color: var(--warn); }
+
+
+/* Input Area */
+.inp-area {
+  padding: 16px; border-top: 1px solid var(--glass-border);
+  background: rgba(10,10,15,0.5);
+}
+.inp-top { display: flex; gap: 8px; margin-bottom: 12px; }
+.sw-sel, .mode-sel {
+  flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border);
+  color: var(--text-dim); font-family: var(--fc); font-size: 10.5px;
+  padding: 6px 10px; border-radius: 8px; outline: none; cursor: pointer;
+  transition: 0.2s;
+}
+.sw-sel:hover, .mode-sel:hover { border-color: rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); }
+.sw-sel:focus, .mode-sel:focus { border-color: var(--ac); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.chip {
+  font-size: 10.5px; padding: 4px 10px; border-radius: 12px; cursor: pointer;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+  color: var(--text-dim); font-family: var(--fc); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.chip:hover { transform: translateY(-2px); color: #fff; }
+.chip.c-mat:hover { border-color: var(--mat); background: rgba(255,94,0,0.1); box-shadow: 0 4px 12px var(--mat-glow); }
+.chip.c-blend:hover { border-color: var(--blend); background: rgba(255,140,66,0.1); box-shadow: 0 4px 12px var(--blend-glow); }
+.chip.c-kicad:hover { border-color: var(--kicad); background: rgba(255,215,0,0.1); box-shadow: 0 4px 12px var(--kicad-glow); }
+
+.irow { display: flex; gap: 10px; align-items: flex-end; }
+.iwrap {
+  flex: 1; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border);
+  border-radius: 12px; padding: 10px 14px; transition: 0.3s;
+}
+.iwrap:focus-within { border-color: rgba(255,255,255,0.3); box-shadow: 0 0 0 2px rgba(255,255,255,0.05); }
+#ci {
+  width: 100%; background: none; border: none; outline: none;
+  color: #fff; font-family: var(--f); font-size: 14px; resize: none;
+  min-height: 24px; max-height: 120px; line-height: 1.5;
+}
+#ci::placeholder { color: var(--text-sub); }
+
+.sbtn {
+  height: 46px; padding: 0 20px; border-radius: 12px;
+  background: linear-gradient(135deg, #fff, #ddd); color: #000;
+  border: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  font-family: var(--f); font-size: 14px; font-weight: 700;
+  transition: 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 4px 15px rgba(255,255,255,0.2);
+}
+.sbtn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,255,255,0.3); background: #fff; }
+.sbtn:active { transform: translateY(1px); }
+.sbtn.busy { background: #333; color: #888; box-shadow: none; pointer-events: none; }
+.sbtn svg { width: 15px; height: 15px; fill: currentColor; }
+
+/* ── RIGHT PANEL (MONITOR) ── */
+.right {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 16px;
+}
+
+.mon-hdr {
+  height: 54px; background: rgba(20, 20, 25, 0.4); border-bottom: 1px solid var(--glass-border);
+  display: flex; align-items: center; padding: 0 20px; gap: 12px; flex-shrink: 0;
+}
+.mon-title { font-size: 13px; font-family: var(--fc); color: var(--text-dim); flex: 1; letter-spacing: 0.5px; }
+.mon-btns { display: flex; gap: 8px; }
+.mbtn {
+  font-size: 11px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+  color: var(--text-dim); font-family: var(--fc); transition: 0.2s; font-weight: 500;
+}
+.mbtn:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.2); }
+
+.monitor {
+  flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 14px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+.monitor::-webkit-scrollbar { width: 6px; }
+.monitor::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 6px; }
+
+/* Welcome Cards */
+.welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 30px; text-align: center; }
+.w-hdr { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.w-ico { font-size: 48px; display: flex; gap: 15px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.1)); }
+.w-h { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #fff, #888); border-radius: 4px; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.w-p { font-size: 15px; color: var(--text-dim); max-width: 500px; line-height: 1.6; }
+
+.sw-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; max-width: 800px; margin-top: 10px; }
+.sw-card {
+  background: rgba(20, 20, 25, 0.4); border: 1px solid var(--glass-border);
+  border-radius: 16px; padding: 24px; cursor: pointer; text-align: center;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  backdrop-filter: blur(10px);
+}
+.sw-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.02); }
+.sw-card.c-mat:hover { border-color: var(--mat); box-shadow: 0 10px 30px var(--mat-glow); }
+.sw-card.c-blend:hover { border-color: var(--blend); box-shadow: 0 10px 30px var(--blend-glow); }
+.sw-card.c-kicad:hover { border-color: var(--kicad); box-shadow: 0 10px 30px var(--kicad-glow); }
+
+.sw-c-ico { font-size: 36px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 16px; background: rgba(0,0,0,0.3); }
+.c-mat .sw-c-ico { box-shadow: inset 0 0 20px var(--mat-glow); color: var(--mat); }
+.c-blend .sw-c-ico { box-shadow: inset 0 0 20px var(--blend-glow); color: var(--blend); }
+.c-kicad .sw-c-ico { box-shadow: inset 0 0 20px var(--kicad-glow); color: var(--kicad); }
+
+.sw-c-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.5px; }
+.sw-c-desc { font-size: 12.5px; color: var(--text-sub); line-height: 1.5; }
+
+/* UI Progress Elements */
+.proj-card {
+  background: rgba(20,20,25,0.6); border: 1px solid var(--glass-border);
+  border-radius: 16px; padding: 20px; display: flex; align-items: flex-start; gap: 16px;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pc-ico { font-size: 32px; flex-shrink: 0; width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: rgba(0,0,0,0.3); }
+.pc-ico.mat { box-shadow: inset 0 0 15px var(--mat-glow); }
+.pc-ico.blend { box-shadow: inset 0 0 15px var(--blend-glow); }
+.pc-ico.kicad { box-shadow: inset 0 0 15px var(--kicad-glow); }
+.pc-body { flex: 1; }
+.pc-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.pc-desc { font-size: 13.5px; color: var(--text-dim); line-height: 1.5; margin-bottom: 12px; }
+.pc-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.pc-tag { font-size: 10px; padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-sub); font-family: var(--fc); border: 1px solid var(--glass-border); text-transform: uppercase; }
+
+.pc-prog { text-align: right; }
+.pc-prognum { font-size: 36px; font-weight: 800; font-family: var(--fc); line-height: 1; }
+.pc-prognum.mat { color: var(--mat); text-shadow: 0 0 15px var(--mat-glow); }
+.pc-prognum.blend { color: var(--blend); text-shadow: 0 0 15px var(--blend-glow); }
+.pc-prognum.kicad { color: var(--kicad); text-shadow: 0 0 15px var(--kicad-glow); }
+.pc-progtot { font-size: 12px; color: var(--text-sub); font-family: var(--fc); margin-top: 4px; }
+
+/* Steps */
+.step-card {
+  background: rgba(15,15,20,0.5); border: 1px solid var(--glass-border);
+  border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 16px;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.step-card.pending { opacity: 0.5; }
+.step-card.running { transform: scale(1.01); background: rgba(255,255,255,0.03); }
+.step-card.running.mat { border-color: var(--mat); box-shadow: 0 4px 20px var(--mat-glow); }
+.step-card.running.blend { border-color: var(--blend); box-shadow: 0 4px 20px var(--blend-glow); }
+.step-card.running.kicad { border-color: var(--kicad); box-shadow: 0 4px 20px var(--kicad-glow); }
+.step-card.done { border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.02); }
+.step-card.error { border-color: rgba(255,23,68,0.3); background: rgba(255,23,68,0.02); }
+
+.s-ico { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; background: rgba(0,0,0,0.4); flex-shrink: 0; }
+.step-card.running.mat .s-ico { color: var(--mat); text-shadow: 0 0 10px var(--mat); }
+.step-card.running.blend .s-ico { color: var(--blend); text-shadow: 0 0 10px var(--blend); }
+.step-card.running.kicad .s-ico { color: var(--kicad); text-shadow: 0 0 10px var(--kicad); }
+.step-card.done .s-ico { color: var(--ok); text-shadow: 0 0 10px var(--ok); }
+.step-card.error .s-ico { color: var(--err); }
+
+.s-body { flex: 1; min-width: 0; }
+.s-label { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.s-status { font-size: 11px; font-family: var(--fc); text-transform: uppercase; letter-spacing: 0.5px; }
+
+.s-status.running.mat { color: var(--mat); }
+.s-status.running.blend { color: var(--blend); }
+.s-status.running.kicad { color: var(--kicad); }
+.s-status.done { color: var(--ok); }
+.s-status.pending { color: var(--text-sub); }
+.s-status.error { color: var(--err); }
+.s-time { font-family: var(--fc); font-size: 11px; color: var(--text-sub); }
+
+/* Completed Banner */
+.done-banner {
+  padding: 30px; border-radius: 16px; text-align: center; border: 1px solid;
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); margin-top: 10px;
+}
+.done-banner.mat { background: linear-gradient(135deg, rgba(255,94,0,0.1), rgba(0,0,0,0)); border-color: rgba(255,94,0,0.3); }
+.done-banner.blend { background: linear-gradient(135deg, rgba(255,140,66,0.1), rgba(0,0,0,0)); border-color: rgba(255,140,66,0.3); }
+.done-banner.kicad { background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(0,0,0,0)); border-color: rgba(255,215,0,0.3); }
+
+.db-ico { font-size: 48px; margin-bottom: 16px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)); }
+.db-title { font-size: 24px; font-weight: 800; margin-bottom: 10px; }
+.done-banner.mat .db-title { color: var(--mat); }
+.done-banner.blend .db-title { color: var(--blend); }
+.done-banner.kicad .db-title { color: var(--kicad); }
+.db-sub { font-size: 14px; color: var(--text-dim); line-height: 1.6; margin-bottom: 20px; }
+.db-file { display: inline-block; padding: 8px 16px; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 8px; font-family: var(--fc); font-size: 11.5px; color: #fff; }
+
+/* Script Viewer */
+.script-panel { height: 0; overflow: hidden; transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1); border-top: 1px solid var(--glass-border); background: rgba(5,5,8,0.9); }
+.script-panel.open { height: 250px; }
+.script-hdr { height: 36px; background: rgba(20,20,25,0.8); display: flex; align-items: center; padding: 0 16px; gap: 10px; border-bottom: 1px solid var(--glass-border); }
+.script-body { height: calc(100% - 36px); padding: 12px 16px; font-family: var(--fc); font-size: 11.5px; color: var(--text-dim); overflow-y: auto; white-space: pre-wrap; line-height: 1.7; scrollbar-width: thin; }
+
+/* Console */
+.console { height: 220px; flex-shrink: 0; display: flex; flex-direction: column; border-top: 1px solid var(--glass-border); background: rgba(5,5,8,0.95); }
+.con-hdr { height: 36px; background: rgba(20,20,25,0.8); border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; padding: 0 16px; gap: 10px; }
+.con-body { flex: 1; padding: 10px 16px; font-family: var(--fc); font-size: 11.5px; line-height: 1.7; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+.con-body::-webkit-scrollbar { width: 6px; }
+.con-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 6px; }
+
+.cl { display: block; animation: fi 0.1s; }
+.cm { color: var(--mat); } .cb { color: var(--blend); } .ck { color: var(--kicad); } .cg { color: var(--ok); } .cr { color: var(--err); } .cw { color: var(--text-sub); font-style: italic; } .cc { color: #a9b7c6; }
+
+/* BOTTOM STATUS BAR */
+.sbar {
+  height: 26px; background: rgba(10,10,15,0.8); border-top: 1px solid var(--glass-border);
+  display: flex; align-items: center; padding: 0 16px; gap: 16px; flex-shrink: 0;
+}
+.si { font-size: 10.5px; color: var(--text-sub); font-family: var(--fc); display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.sd { width: 6px; height: 6px; border-radius: 50%; box-shadow: 0 0 5px currentColor; }
+.sd.ok { background: var(--ok); color: var(--ok); }
+.sd.bz { background: var(--warn); color: var(--warn); animation: pulse 1s infinite alternate; }
+.sd.off { background: var(--text-sub); color: transparent; box-shadow: none; opacity: 0.3; }
+.ssep { width: 1px; height: 12px; background: var(--glass-border); }
+
+@keyframes pulse { from { opacity: 0.5; box-shadow: 0 0 2px currentColor; } to { opacity: 1; box-shadow: 0 0 8px currentColor; } }
+@keyframes fi { from { opacity: 0; } to { opacity: 1; } }
+
+/* Plan Preview */
+.plan-preview {
+  margin-top: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border);
+  border-radius: 12px; padding: 14px;
+}
+.pp-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.pp-title.mat { color: var(--mat); } .pp-title.blend { color: var(--blend); } .pp-title.kicad { color: var(--kicad); }
+.pp-step { font-size: 11.5px; color: var(--text-dim); padding: 4px 0; display: flex; gap: 8px; align-items: center; }
+.pp-num { background: rgba(255,255,255,0.05); width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 9px; font-family: var(--fc); color: #fff; }
+.detect-badge { display: inline-block; padding: 4px 10px; font-family: var(--fc); font-size: 10px; font-weight: 700; border-radius: 8px; margin-bottom: 8px; border: 1px solid; text-transform: uppercase; letter-spacing: 1px; }
+.detect-badge.mat { background: rgba(255,94,0,0.1); color: var(--mat); border-color: rgba(255,94,0,0.3); }
+.detect-badge.blend { background: rgba(255,140,66,0.1); color: var(--blend); border-color: rgba(255,140,66,0.3); }
+.detect-badge.kicad { background: rgba(255,215,0,0.1); color: var(--kicad); border-color: rgba(255,215,0,0.3); }
+
+.think-spin { width:16px; height:16px; border: 2px solid rgba(0,136,255,0.2); border-top-color: var(--ac); border-radius: 50%; animation: sp 0.8s linear infinite; }
+@keyframes sp { to { transform: rotate(360deg); } }
+.thinking { display: flex; gap: 10px; align-items: center; font-family: var(--fc); font-size: 11px; color: var(--ac); background: rgba(0,136,255,0.05); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(0,136,255,0.1); }
+</style>
+</head>
+<body>
+
+<div class="tb">
+  <div class="wbtns"><div class="wb c"></div><div class="wb m"></div><div class="wb x"></div></div>
+  <div class="tbtxt">ULTRON AI — UNLIMITED ENGINEERING COPILOT</div>
+  <div class="cbadge wait" id="cbadge">● CONNECTING</div>
+</div>
+
+<div class="app">
+
+  <!-- CHAT -->
+  <div class="chat glass">
+    <div class="chat-hdr">
+      <div class="chat-ttl">Ultron AI</div>
+      <div class="sw-badges">
+        <div class="sw-badge mat off" id="badge-matlab">MATLAB</div>
+        <div class="sw-badge blend off" id="badge-blender">BLENDER</div>
+        <div class="sw-badge kicad off" id="badge-kicad">KICAD</div>
+      </div>
+    </div>
+
+    <div class="msgs" id="msgs">
+      <div class="msg a">
+        <div class="bub">
+          Greetings! I am <strong>Ultron AI</strong>, your ultra-premium engineering copilot.<br><br>
+          I am capable of autonomously executing complete, complex projects inside <strong>MATLAB</strong>, <strong>Blender 4.2</strong>, and <strong>KiCad</strong>.<br><br>
+          Just describe what you want to build. I will structure the thought process, generate the required logic via AI, and build it live on your local machine.
+        </div>
+        <div class="mmeta"><span class="atag auto">SYS</span> Initialization complete</div>
+      </div>
+    </div>
+
+    <div class="inp-area">
+      <div class="inp-top">
+        <select class="sw-sel" id="sw-sel">
+          <option value="auto">🤖 Auto-Detect Software</option>
+          <option value="matlab">📐 Force MATLAB</option>
+          <option value="blender">🎨 Force Blender</option>
+          <option value="kicad">⚡ Force KiCad</option>
+        </select>
+        <select class="mode-sel" id="mode-sel">
+          <option value="auto">🚀 Auto Exec (Live)</option>
+          <option value="demo">🎮 Demo (Output script only)</option>
+        </select>
+      </div>
+      
+      <div class="chips" id="chips">
+        <div class="chip c-mat" onclick="qs('Drone flight controller PID tuning map','matlab')">Drone PID</div>
+        <div class="chip c-mat" onclick="qs('Monte Carlo financial risk simulation','matlab')">Monte Carlo</div>
+        <div class="chip c-blend" onclick="qs('Create a realistic 3D mechanical gear assembly','blender')">3D Gear Assy</div>
+        <div class="chip c-blend" onclick="qs('Procedural abstract wave geometry animation','blender')">Procedural Waves</div>
+        <div class="chip c-kicad" onclick="qs('Design a 555 timer LED flasher circuit','kicad')">555 Timer</div>
+        <div class="chip c-kicad" onclick="qs('Operational amplifier voltage follower PCB','kicad')">Op-Amp Buffer</div>
+      </div>
+
+      <div class="irow">
+        <div class="iwrap">
+          <textarea id="ci" placeholder="Describe your engineering project..." rows="1"></textarea>
+        </div>
+        <button class="sbtn" id="sbtn" onclick="send()">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Build
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right glass">
+    
+    <div class="mon-hdr">
+      <span class="mon-title" id="mon-title">SYSTEM MONITOR</span>
+      <div class="mon-btns">
+        <div class="mbtn" id="script-toggle" onclick="toggleScript()" style="display:none">📄 Script View</div>
+        <div class="mbtn" onclick="openFolder()">📁 Open Workspace</div>
+        <div class="mbtn" onclick="clearMonitor()">🗑️ Clear</div>
+      </div>
+    </div>
+
+    <div class="monitor" id="monitor">
+      <div class="welcome" id="welcome">
+        <div class="w-hdr">
+          <div class="w-ico">🚀</div>
+          <div class="w-h">Any Project. Instantly.</div>
+          <div class="w-p">Describe your vision. Ultron AI automatically detects the proper environment, generates the logic, and executes it seamlessly on your desktop.</div>
+        </div>
+        
+        <div class="sw-cards">
+          <div class="sw-card c-mat" onclick="qs('Kalman filter trajectory estimation','matlab')">
+            <div class="sw-c-ico">📐</div>
+            <div class="sw-c-title">MATLAB</div>
+            <div class="sw-c-desc">Control systems, signal processing, simulations, robotics</div>
+          </div>
+          <div class="sw-card c-blend" onclick="qs('Generate a procedural glowing crystal cave','blender')">
+            <div class="sw-c-ico">🎨</div>
+            <div class="sw-c-title">Blender 4.2</div>
+            <div class="sw-c-desc">3D modeling, mechanical parts, procedural geometry</div>
+          </div>
+          <div class="sw-card c-kicad" onclick="qs('Design a buck converter stepped-down power supply','kicad')">
+            <div class="sw-c-ico">⚡</div>
+            <div class="sw-c-title">KiCad</div>
+            <div class="sw-c-desc">Schematic creation, PCB layout, electronic circuitry</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="script-panel" id="script-panel">
+      <div class="script-hdr">
+        <span class="sh-title">GENERATED LOGIC SCRIPT</span>
+        <div class="mbtn" onclick="copyScript()">Copy</div>
+        <div class="mbtn" onclick="toggleScript()">✕</div>
+      </div>
+      <div class="script-body" id="script-body"></div>
+    </div>
+
+    <div class="console">
+      <div class="con-hdr">
+        <span class="con-title">TERMINAL OUTPUT</span>
+        <div class="mbtn" onclick="clearCon()">clc</div>
+      </div>
+      <div class="con-body" id="con-body">
+        <span class="cl cw">Ultron AI Ultra-Premium Instance Booting...</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="sbar">
+  <div class="si"><div class="sd off" id="sdot"></div><span id="stxt">Offline</span></div>
+  <div class="ssep"></div>
+  <div class="si" id="s-matlab"><div class="sd off" id="sd-matlab"></div>MATLAB</div>
+  <div class="si" id="s-blender"><div class="sd off" id="sd-blender"></div>BLENDER</div>
+  <div class="si" id="s-kicad"><div class="sd off" id="sd-kicad"></div>KICAD</div>
+  <div class="ssep"></div>
+  <div class="si" id="s-api">API: —</div>
+  <div class="ssep"></div>
+  <div class="si" id="s-steps">IDLE</div>
+</div>
+
+<script>
+const SRV = 'http://localhost:3001';
+let ws = null, curProject = null, doneSteps = 0, curScript = '', stepStart = {};
+
+// UI Helpers
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const now = () => new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'});
+
+async function connect() {
+  try {
+    const r = await fetch(SRV+'/api/health', { signal: AbortSignal.timeout(6000) });
+    const d = await r.json();
+    
+    $('cbadge').className = 'cbadge ok'; $('cbadge').innerHTML = '● LIVE';
+    $('stxt').innerHTML = 'Live'; $('sdot').className = 'sd ok';
+    
+    // UI Software states
+    $('sd-matlab').className = d.matlabFound ? 'sd ok' : 'sd off';
+    $('badge-matlab').className = d.matlabFound ? 'sw-badge mat' : 'sw-badge mat off';
+    
+    $('sd-blender').className = d.blenderFound ? 'sd ok' : 'sd off';
+    $('badge-blender').className = d.blenderFound ? 'sw-badge blend' : 'sw-badge blend off';
+    
+    $('sd-kicad').className = d.kicadFound ? 'sd ok' : 'sd off';
+    $('badge-kicad').className = d.kicadFound ? 'sw-badge kicad' : 'sw-badge kicad off';
+
+    $('s-api').innerHTML = `AI: ${d.apiKeySet ? '<span style="color:var(--ok)">ONLINE</span>' : '<span style="color:var(--err)">NO KEY</span>'}`;
+
+    cprint('info', `MATLAB: ${d.matlabFound||'missing'}`);
+    cprint('info', `Blender: ${d.blenderFound||'missing'}`);
+    cprint('info', `KiCad: ${d.kicadFound||'missing'}`);
+
+    connectWS();
+  } catch(e) {
+    $('cbadge').className = 'cbadge no'; $('cbadge').innerHTML = '● ERR';
+    $('stxt').innerHTML = 'Cannot connect to Server'; $('sdot').className = 'sd off';
+  }
+}
+
+function connectWS() {
+  try { ws = new WebSocket(SRV.replace('http','ws')); ws.onmessage = e => handle(JSON.parse(e.data)); } catch {}
+}
+
+const getSwKey = sw => sw === 'blender' ? 'blend' : sw === 'kicad' ? 'kicad' : 'mat';
+const getSwName = sw => sw === 'blender' ? 'Blender 4.2' : sw === 'kicad' ? 'KiCad' : 'MATLAB';
+const getSwIcon = sw => sw === 'blender' ? '🎨' : sw === 'kicad' ? '⚡' : '📐';
+
+function handle(d) {
+  switch(d.type) {
+    case 'status': 
+      $('stxt').innerHTML = d.msg; $('sdot').className = 'sd bz'; 
+      if(d.stage === 'planning') showThinking();
+      break;
+    case 'plan_ready': hideThinking(); renderProject(d.project); break;
+    case 'project_start':
+      curProject = d.project; doneSteps = 0; stepStart = {};
+      if($('welcome')) $('welcome').remove();
+      $('mon-title').innerHTML = `Executing: ${d.project.title}`;
+      $('s-steps').innerHTML = `0/${d.project.steps.length} STEPS`;
+      break;
+    case 'script_ready':
+      $('script-toggle').style.display = 'block'; loadScript(d.id);
+      break;
+    case 'software_launched': case 'matlab_launched':
+      cprint('ok', d.msg); break;
+    case 'step_update':
+      updateStep(d);
+      if(d.status === 'running') {
+        stepStart[d.stepIndex] = Date.now();
+        cprint(getSwKey(curProject?.software), `Step ${d.stepIndex+1}: ${d.label}`);
+      }
+      if(d.status === 'done') {
+        doneSteps++;
+        cprint('ok', `  ✓ done (${((Date.now()-stepStart[d.stepIndex])/1000).toFixed(1)}s)`);
+        $('s-steps').innerHTML = `${doneSteps}/${curProject.steps.length} STEPS`;
+        $('prognum').innerHTML = doneSteps;
+      }
+      break;
+    case 'console_output': cprint('cc', d.text); break;
+    case 'error': case 'matlab_error':
+      cprint('err', d.msg || d.error); 
+      addAI(`<span class="cl-err">Error Exception: ${esc(d.msg || d.error)}</span>`); 
+      break;
+    case 'fix_attempt':
+      cprint('info', `Self-Healing: ${d.msg}`);
+      break;
+    case 'project_complete':
+      renderComplete(d); $('sdot').className = 'sd ok'; $('stxt').innerHTML = 'Idle';
+      break;
+  }
+}
+
+async function send() {
+  const q = $('ci').value.trim(); if(!q) return;
+  $('ci').value = ''; $('ci').style.height = 'auto';
+  addUser(q); showThinking(); setBusy(true);
+
+  const swSel = $('sw-sel').value;
+  const software = swSel === 'auto' ? null : swSel;
+  const mode = $('mode-sel').value;
+
+  try {
+    const pr = await fetch(SRV+'/api/plan', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q, software}) });
+    if(!pr.ok) throw new Error((await pr.json()).error || 'Plan fail');
+    const pd = await pr.json();
+    hideThinking(); showPlanInChat(pd.project);
+    await fetch(SRV+'/api/execute', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({project:pd.project, mode}) });
+  } catch(e) { hideThinking(); cprint('err', e.message); addAI(`<span class="cl-err">${esc(e.message)}</span>`); }
+  finally { setBusy(false); }
+}
+
+function qs(txt, sw) { $('ci').value = txt; if(sw) $('sw-sel').value = sw; send(); }
+
+function addUser(txt) {
+  const d = document.createElement('div'); d.className = 'msg u';
+  d.innerHTML = `<div class="bub">${esc(txt)}</div><div class="mmeta">${now()}</div>`;
+  $('msgs').appendChild(d); d.scrollIntoView();
+}
+
+function addAI(html, sw) {
+  const d = document.createElement('div'); d.className = 'msg a';
+  const tag = sw ? getSwKey(sw) : 'auto';
+  d.innerHTML = `<div class="bub">${html}</div><div class="mmeta"><span class="atag ${tag}">ul-${tag}</span> ${now()}</div>`;
+  $('msgs').appendChild(d); d.scrollIntoView();
+}
+
+function showThinking() {
+  if($('thinking')) return;
+  const d = document.createElement('div'); d.id = 'thinking'; d.className = 'msg a';
+  d.innerHTML = `<div class="thinking"><div class="think-spin"></div>Synthesizing Solution...</div>`;
+  $('msgs').appendChild(d); d.scrollIntoView();
+}
+function hideThinking() { if($('thinking')) $('thinking').remove(); }
+
+function cprint(type, msg) {
+  const d = document.createElement('span'); d.className = 'cl';
+  const cls = {mat:'cm', blend:'cb', kicad:'ck', ok:'cg', err:'cr', info:'cw', cc:'cc'}[type]||'cc';
+  const pre = {mat:'>>', blend:'>>', kicad:'>>', ok:' ✓', err:' ✗', info:' #', cc:'  '}[type]||'  ';
+  d.innerHTML = `<span class="${cls}">${pre} ${esc(msg)}</span>`;
+  $('con-body').appendChild(d); $('con-body').appendChild(document.createElement('br'));
+  $('con-body').scrollTop = $('con-body').scrollHeight;
+}
+
+function showPlanInChat(p) {
+  const swKey = getSwKey(p.software);
+  const steps = p.steps.slice(0,5).map((s,i) => `<div class="pp-step"><div class="pp-num">${i+1}</div>${esc(s.label)}</div>`).join('');
+  addAI(`
+    <div class="detect-badge ${swKey}">${getSwIcon(p.software)} Pipeline: ${getSwName(p.software)}</div><br>
+    <div class="plan-preview">
+      <div class="pp-title ${swKey}">${esc(p.title)}</div>
+      ${steps}
+      ${p.steps.length>5 ? `<div style="font-size:10px; color:var(--text-sub); margin-top:5px">+${p.steps.length-5} more steps...</div>` : ''}
+    </div>
+    <br><span class="cl-ok">Initiating Workspace Environment...</span>
+  `, p.software);
+}
+
+function renderProject(p) {
+  $('monitor').innerHTML = '';
+  const swKey = getSwKey(p.software);
+  
+  const hdr = document.createElement('div'); hdr.className = `proj-card`;
+  hdr.innerHTML = `
+    <div class="pc-ico ${swKey}">${getSwIcon(p.software)}</div>
+    <div class="pc-body">
+      <div class="pc-title">${esc(p.title)}</div>
+      <div class="pc-desc">${esc(p.description)}</div>
+      <div class="pc-tags"><span class="pc-tag">${getSwName(p.software)}</span><span class="pc-tag">~${p.estimatedTime}</span></div>
+    </div>
+    <div class="pc-prog"><div class="pc-prognum ${swKey}" id="prognum">0</div><div class="pc-progtot">/${p.steps.length}</div></div>
+  `;
+  $('monitor').appendChild(hdr);
+
+  p.steps.forEach((s,i) => {
+    const c = document.createElement('div'); c.className = 'step-card pending'; c.id = `sc-${i}`; c.setAttribute('data-sw', swKey);
+    c.innerHTML = `
+      <div class="s-ico" id="si-${i}">⬜</div>
+      <div class="s-body">
+        <div class="s-label">${esc(s.label)}</div>
+        <div class="s-status pending" id="ss-${i}">queued...</div>
+      </div>
+      <div class="s-time" id="st-${i}">—</div>
+    `;
+    $('monitor').appendChild(c);
+  });
+}
+
+function updateStep(d) {
+  const c = $(`sc-${d.stepIndex}`); if(!c) return;
+  const swKey = c.getAttribute('data-sw');
+  c.className = `step-card ${d.status} ${d.status==='running'?swKey:''}`;
+  
+  const ics = {running:'⚡', done:'✓', error:'✗', pending:'⬜'};
+  $(`si-${d.stepIndex}`).innerHTML = ics[d.status];
+  
+  const ss = $(`ss-${d.stepIndex}`);
+  ss.className = `s-status ${d.status} ${d.status==='running'?swKey:''}`;
+  ss.innerHTML = d.status==='running' ? 'EXECUTING...' : d.status;
+  
+  if(d.status==='done' && stepStart[d.stepIndex]) { $(`st-${d.stepIndex}`).innerHTML = ((Date.now()-stepStart[d.stepIndex])/1000).toFixed(1)+'s'; }
+  c.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function renderComplete(d) {
+  const swKey = getSwKey(d.software || curProject?.software);
+  const swName = getSwName(d.software || curProject?.software);
+  const b = document.createElement('div'); b.className = `done-banner ${swKey}`;
+  b.innerHTML = `
+    <div class="db-ico">🚀</div>
+    <div class="db-title">${d.demo ? 'SIMULATION COMPLETE' : 'EXECUTION SUCCESS'}</div>
+    <div class="db-sub">Successfully constructed ${d.steps} operations inside ${swName}.</div>
+    ${d.scriptPath ? `<div class="db-file">${d.scriptPath}</div>` : ''}
+  `;
+  $('monitor').appendChild(b); b.scrollIntoView();
+  
+  setTimeout(() => {
+    addAI(`<span class="cl-ok">System execution finalized.</span><br><br>You may supply follow-up edits to augment the generated project structure.`, d.software);
+  }, 1000);
+}
+
+async function loadScript(id) {
+  try { const r = await fetch(SRV+'/api/script/'+id); curScript = (await r.json()).content || ''; $('script-body').textContent = curScript; } catch{}
+}
+
+function toggleScript() { $('script-panel').classList.toggle('open'); }
+function copyScript() { navigator.clipboard.writeText(curScript); cprint('ok', 'Script copied'); }
+function clearCon() { $('con-body').innerHTML = ''; }
+function clearMonitor() {
+  $('monitor').innerHTML = $('welcome').outerHTML;
+  $('mon-title').innerHTML = 'SYSTEM MONITOR'; $('s-steps').innerHTML = 'IDLE';
+  $('script-toggle').style.display='none'; $('script-panel').classList.remove('open');
+}
+function setBusy(b) {
+  $('sbtn').classList.toggle('busy',b);
+  $('sbtn').innerHTML = b ? `<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg> Processing` : `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Build`;
+}
+async function openFolder() { try{await fetch(SRV+'/api/open-folder');}catch{} }
+
+$('ci').addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,100)+'px'; });
+$('ci').addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+
+connect();
+</script>
+</body>
+</html>
