@@ -358,6 +358,35 @@ body, html {
 .db-sub { font-size: 14px; color: var(--text-dim); line-height: 1.6; margin-bottom: 20px; }
 .db-file { display: inline-block; padding: 8px 16px; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 8px; font-family: var(--fc); font-size: 11.5px; color: #fff; }
 
+/* Simulation Results */
+.res-card {
+  background: rgba(10,10,15,0.7); border: 1px solid var(--glass-border);
+  border-radius: 12px; padding: 16px; margin-top: 10px;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.res-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.res-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.res-file {
+  background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+  border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 12px;
+  transition: all 0.2s ease; cursor: default;
+}
+.res-file:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); transform: translateY(-2px); }
+.rf-ext-fig { border-color: rgba(255, 94, 0, 0.3); } .rf-ext-fig:hover { border-color: var(--mat); box-shadow: 0 4px 12px rgba(255,94,0,0.15); }
+.rf-ext-mat { border-color: rgba(0, 136, 255, 0.3); } .rf-ext-mat:hover { border-color: var(--ac); box-shadow: 0 4px 12px rgba(0,136,255,0.15); }
+.rf-ext-png { border-color: rgba(0, 230, 118, 0.3); } .rf-ext-png:hover { border-color: var(--ok); box-shadow: 0 4px 12px rgba(0,230,118,0.15); }
+.rf-ext-m { border-color: rgba(255, 255, 255, 0.2); }
+.rf-type { font-size: 20px; flex-shrink: 0; }
+.rf-info { flex: 1; min-width: 0; }
+.rf-name { font-family: var(--fc); font-size: 11.5px; color: #f0f0f5; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; margin-bottom: 3px; }
+.rf-size { font-size: 10px; color: var(--text-dim); }
+.rf-open {
+  background: rgba(255,255,255,0.1); border: none; color: #fff;
+  border-radius: 6px; padding: 4px 10px; font-size: 10px; font-weight: 600;
+  cursor: pointer; transition: 0.2s; text-transform: uppercase;
+}
+.rf-open:hover { background: #fff; color: #000; }
+
 /* Script Viewer */
 .script-panel { height: 0; overflow: hidden; transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1); border-top: 1px solid var(--glass-border); background: rgba(5,5,8,0.9); }
 .script-panel.open { height: 250px; }
@@ -489,24 +518,34 @@ body, html {
     <div class="monitor" id="monitor">
       <div class="welcome" id="welcome">
         <div class="w-hdr">
-          <div class="w-ico">🚀</div>
+          <div class="w-ico">
+            <img src="/logos/matlab.svg" width="44" height="44" alt="MATLAB" title="MATLAB">
+            <img src="/logos/blender.svg" width="44" height="44" alt="Blender" title="Blender">
+            <img src="/logos/kicad.svg" width="44" height="44" alt="KiCad" title="KiCad">
+          </div>
           <div class="w-h">Any Project. Instantly.</div>
           <div class="w-p">Describe your vision. Ultron AI automatically detects the proper environment, generates the logic, and executes it seamlessly on your desktop.</div>
         </div>
         
         <div class="sw-cards">
           <div class="sw-card c-mat" onclick="qs('Kalman filter trajectory estimation','matlab')">
-            <div class="sw-c-ico">📐</div>
+          <div class="sw-c-ico" style="background:none; box-shadow:none">
+            <img src="/logos/matlab.svg" width="42" height="42" alt="MATLAB">
+          </div>
             <div class="sw-c-title">MATLAB</div>
             <div class="sw-c-desc">Control systems, signal processing, simulations, robotics</div>
           </div>
           <div class="sw-card c-blend" onclick="qs('Generate a procedural glowing crystal cave','blender')">
-            <div class="sw-c-ico">🎨</div>
+          <div class="sw-c-ico" style="background:none; box-shadow:none">
+            <img src="/logos/blender.svg" width="42" height="42" alt="Blender">
+          </div>
             <div class="sw-c-title">Blender 4.2</div>
             <div class="sw-c-desc">3D modeling, mechanical parts, procedural geometry</div>
           </div>
           <div class="sw-card c-kicad" onclick="qs('Design a buck converter stepped-down power supply','kicad')">
-            <div class="sw-c-ico">⚡</div>
+          <div class="sw-c-ico" style="background:none; box-shadow:none">
+            <img src="/logos/kicad.svg" width="42" height="42" alt="KiCad">
+          </div>
             <div class="sw-c-title">KiCad</div>
             <div class="sw-c-desc">Schematic creation, PCB layout, electronic circuitry</div>
           </div>
@@ -594,7 +633,11 @@ function connectWS() {
 
 const getSwKey = sw => sw === 'blender' ? 'blend' : sw === 'kicad' ? 'kicad' : 'mat';
 const getSwName = sw => sw === 'blender' ? 'Blender 4.2' : sw === 'kicad' ? 'KiCad' : 'MATLAB';
-const getSwIcon = sw => sw === 'blender' ? '🎨' : sw === 'kicad' ? '⚡' : '📐';
+const getSwIcon = sw => {
+  if(sw === 'blender') return `<img src="/logos/blender.svg" width="18" height="18" style="filter:brightness(0) saturate(100%) invert(57%) sepia(89%) saturate(500%) hue-rotate(5deg) brightness(110%);vertical-align:middle;margin-right:3px" alt="Blender">`;
+  if(sw === 'kicad') return `<img src="/logos/kicad.svg" width="18" height="18" style="border-radius:3px;vertical-align:middle;margin-right:3px" alt="KiCad">`;
+  return `<img src="/logos/matlab.svg" width="18" height="18" style="vertical-align:middle;margin-right:3px" alt="MATLAB">`;
+};
 
 function handle(d) {
   switch(d.type) {
@@ -638,7 +681,14 @@ function handle(d) {
     case 'project_complete':
       renderComplete(d); $('sdot').className = 'sd ok'; $('stxt').innerHTML = 'Idle';
       break;
+    case 'matlab_files':
+      renderMatlabFiles(d.files);
+      break;
   }
+}
+
+async function openFile(fileAbsPath) {
+  try { await fetch(SRV+'/api/open-file?path='+encodeURIComponent(fileAbsPath)); } catch{}
 }
 
 async function send() {
@@ -695,7 +745,14 @@ function cprint(type, msg) {
 function showPlanInChat(p) {
   const swKey = getSwKey(p.software);
   const steps = p.steps.slice(0,5).map((s,i) => `<div class="pp-step"><div class="pp-num">${i+1}</div>${esc(s.label)}</div>`).join('');
+
+  let explanationHtml = '';
+  if (p.explanation) {
+    explanationHtml = `<div style="margin-bottom:15px;font-size:13.5px;line-height:1.7;color:#f0f0f5;background:rgba(0,0,0,0.35);padding:18px;border-radius:10px;border-left:3px solid var(--ac);overflow-y:auto;max-height:400px"><strong style="font-size:14px;color:#fff">📚 Theoretical Explanation</strong><br><br>${p.explanation}</div>`;
+  }
+
   addAI(`
+    ${explanationHtml}
     <div class="detect-badge ${swKey}">${getSwIcon(p.software)} Pipeline: ${getSwName(p.software)}</div><br>
     <div class="plan-preview">
       <div class="pp-title ${swKey}">${esc(p.title)}</div>
@@ -756,17 +813,61 @@ function renderComplete(d) {
   const swKey = getSwKey(d.software || curProject?.software);
   const swName = getSwName(d.software || curProject?.software);
   const b = document.createElement('div'); b.className = `done-banner ${swKey}`;
+  
+  let filesHtml = '';
+  if (d.savedFiles && d.savedFiles.length > 0) {
+    const fileCards = d.savedFiles.map(f => {
+      let icon = '📄', cls = 'rf-ext-m';
+      if(f.ext === '.fig') { icon = '📊'; cls = 'rf-ext-fig'; }
+      if(f.ext === '.png' || f.ext === '.jpg') { icon = '🖼'; cls = 'rf-ext-png'; }
+      if(f.ext === '.mat') { icon = '💾'; cls = 'rf-ext-mat'; }
+      return `<div class="db-file" style="margin:4px;cursor:pointer" onclick="openFile('${f.path.replace(/\\/g,'\\\\')}')" title="${f.path}">${icon} ${f.name}</div>`;
+    }).join('');
+    filesHtml = `<div style="margin-top:15px">${fileCards}</div>`;
+  } else if (d.scriptPath) {
+    filesHtml = `<div class="db-file">${d.scriptPath}</div>`;
+  }
+
   b.innerHTML = `
     <div class="db-ico">🚀</div>
     <div class="db-title">${d.demo ? 'SIMULATION COMPLETE' : 'EXECUTION SUCCESS'}</div>
     <div class="db-sub">Successfully constructed ${d.steps} operations inside ${swName}.</div>
-    ${d.scriptPath ? `<div class="db-file">${d.scriptPath}</div>` : ''}
+    ${filesHtml}
   `;
   $('monitor').appendChild(b); b.scrollIntoView();
   
   setTimeout(() => {
     addAI(`<span class="cl-ok">System execution finalized.</span><br><br>You may supply follow-up edits to augment the generated project structure.`, d.software);
   }, 1000);
+}
+
+function renderMatlabFiles(files) {
+  if (!files || files.length === 0) return;
+  const card = document.createElement('div'); card.className = 'res-card';
+  card.innerHTML = `<div class="res-title">📊 Simulation Results</div><div class="res-grid"></div>`;
+  const grid = card.querySelector('.res-grid');
+  
+  files.forEach(f => {
+    let icon = '📄', cls = 'rf-ext-m';
+    if(f.ext === '.fig') { icon = '📊'; cls = 'rf-ext-fig'; }
+    if(f.ext === '.png' || f.ext === '.jpg') { icon = '🖼'; cls = 'rf-ext-png'; }
+    if(f.ext === '.mat') { icon = '💾'; cls = 'rf-ext-mat'; }
+    
+    const kb = (f.size / 1024).toFixed(1);
+    const item = document.createElement('div'); item.className = `res-file ${cls}`;
+    item.innerHTML = `
+      <div class="rf-type">${icon}</div>
+      <div class="rf-info">
+        <div class="rf-name" title="${f.name}">${f.name}</div>
+        <div class="rf-size">${kb} KB</div>
+      </div>
+      <button class="rf-open" onclick="openFile('${f.path.replace(/\\/g,'\\\\')}')">Open</button>
+    `;
+    grid.appendChild(item);
+  });
+  
+  $('monitor').appendChild(card);
+  card.scrollIntoView({behavior:'smooth'});
 }
 
 async function loadScript(id) {
