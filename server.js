@@ -13,15 +13,15 @@
  * Deps: npm install
  */
 
-const express        = require('express');
-const cors           = require('cors');
+const express = require('express');
+const cors = require('cors');
 const { exec, execSync } = require('child_process');
-const fs             = require('fs');
-const path           = require('path');
-const os             = require('os');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const { v4: uuidv4 } = require('uuid');
-const WebSocket      = require('ws');
-const http           = require('http');
+const WebSocket = require('ws');
+const http = require('http');
 const {
   generateProject,
   generateMATLABProject,
@@ -34,24 +34,30 @@ const {
 } = require('./agents/groq-agent');
 const config = require('./config');
 
-const app    = express();
+const app = express();
 const server = http.createServer(app);
-const wss    = new WebSocket.Server({ server });
-const PORT   = config.PORT || 3001;
-const isWin  = process.platform === 'win32';
+const wss = new WebSocket.Server({ server });
+const PORT = config.PORT || 3001;
+const isWin = process.platform === 'win32';
 
 // Output folders
-const DESKTOP        = path.join(os.homedir(), 'Desktop', 'Ultron_AI');
-const MATLAB_FOLDER  = path.join(DESKTOP, 'MATLAB');
+const DESKTOP = path.join(os.homedir(), 'Desktop', 'Ultron_AI');
+const MATLAB_FOLDER = path.join(DESKTOP, 'MATLAB');
 const BLENDER_FOLDER = path.join(DESKTOP, 'Blender');
-const KICAD_FOLDER   = path.join(DESKTOP, 'KiCad');
+const KICAD_FOLDER = path.join(DESKTOP, 'KiCad');
 [DESKTOP, MATLAB_FOLDER, BLENDER_FOLDER, KICAD_FOLDER].forEach(d => {
   if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
 });
 
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Force browser to NEVER cache UI files to ensure updates propagate instantly
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  next();
+});
+app.use(express.static(path.join(__dirname, 'public'), { etag: false, maxAge: 0 }));
 
 // ─────────────────────────────────────────────
 //  HELPERS
@@ -93,9 +99,9 @@ async function findSoftware(paths) {
   return null;
 }
 
-async function findMATLAB()  { return findSoftware(config.MATLAB_PATHS);  }
+async function findMATLAB() { return findSoftware(config.MATLAB_PATHS); }
 async function findBlender() { return findSoftware(config.BLENDER_PATHS); }
-async function findKiCad()   { return findSoftware(config.KICAD_PATHS);   }
+async function findKiCad() { return findSoftware(config.KICAD_PATHS); }
 
 // ─────────────────────────────────────────────
 //  WEBSOCKET
@@ -110,11 +116,11 @@ wss.on('connection', ws => {
 app.get('/api/health', async (req, res) => {
   const [matlabPath, blenderPath, kicadPath] = await Promise.all([findMATLAB(), findBlender(), findKiCad()]);
   const geminiReady = !!(config.GEMINI_API_KEY && config.GEMINI_API_KEY !== 'YOUR_GEMINI_API_KEY_HERE');
-  const groqReady   = !!(config.GROQ_API_KEY   && config.GROQ_API_KEY   !== 'YOUR_GROQ_API_KEY_HERE');
-  const apiKeySet   = geminiReady || groqReady;
-  const activeAI    = geminiReady ? 'Gemini ' + (config.GEMINI_MODEL || '2.0-flash')
-                    : groqReady   ? 'Groq Llama 3.3'
-                    : 'none';
+  const groqReady = !!(config.GROQ_API_KEY && config.GROQ_API_KEY !== 'YOUR_GROQ_API_KEY_HERE');
+  const apiKeySet = geminiReady || groqReady;
+  const activeAI = geminiReady ? 'Gemini ' + (config.GEMINI_MODEL || '2.0-flash')
+    : groqReady ? 'Groq Llama 3.3'
+      : 'none';
 
   res.json({
     status: 'ok', matlab: matlabPath, matlabFound: !!matlabPath,
@@ -137,10 +143,10 @@ app.post('/api/plan', async (req, res) => {
   try {
     log(`Planning [${detected}]: "${query}"`);
     let project;
-    if (detected === 'blender')     project = await generateBlenderProject(query);
+    if (detected === 'blender') project = await generateBlenderProject(query);
     else if (detected === 'matlab') project = await generateMATLABProject(query);
-    else if (detected === 'kicad')  project = await generateKiCadProject(query);
-    else                            project = await generateProject(query);
+    else if (detected === 'kicad') project = await generateKiCadProject(query);
+    else project = await generateProject(query);
 
     log(`Plan ready: ${project.title} — ${project.steps.length} steps`);
     broadcast('plan_ready', { project });
@@ -180,10 +186,10 @@ app.post('/api/followup', async (req, res) => {
 
 // Script viewer
 app.get('/api/script/:id', (req, res) => {
-  const mFile  = path.join(MATLAB_FOLDER,  `ultron_${req.params.id}.m`);
+  const mFile = path.join(MATLAB_FOLDER, `ultron_${req.params.id}.m`);
   const pyFile = path.join(BLENDER_FOLDER, `ultron_${req.params.id}.py`);
-  const ksFile = path.join(KICAD_FOLDER,   `ultron_${req.params.id}.kicad_sch`);
-  if (fs.existsSync(mFile))  return res.json({ content: fs.readFileSync(mFile,  'utf8'), ext: 'm'  });
+  const ksFile = path.join(KICAD_FOLDER, `ultron_${req.params.id}.kicad_sch`);
+  if (fs.existsSync(mFile)) return res.json({ content: fs.readFileSync(mFile, 'utf8'), ext: 'm' });
   if (fs.existsSync(pyFile)) return res.json({ content: fs.readFileSync(pyFile, 'utf8'), ext: 'py' });
   if (fs.existsSync(ksFile)) return res.json({ content: fs.readFileSync(ksFile, 'utf8'), ext: 'kicad_sch' });
   res.status(404).json({ error: 'Script not found' });
@@ -193,9 +199,9 @@ app.get('/api/files', (req, res) => {
   try {
     const collect = (dir, ext) => fs.existsSync(dir)
       ? fs.readdirSync(dir).filter(f => f.endsWith(ext)).map(f => {
-          const fp = path.join(dir, f);
-          return { name: f, path: fp, ext, size: fs.statSync(fp).size, created: fs.statSync(fp).birthtime };
-        })
+        const fp = path.join(dir, f);
+        return { name: f, path: fp, ext, size: fs.statSync(fp).size, created: fs.statSync(fp).birthtime };
+      })
       : [];
     const files = [...collect(MATLAB_FOLDER, '.m'), ...collect(BLENDER_FOLDER, '.py'), ...collect(KICAD_FOLDER, '.kicad_sch'), ...collect(KICAD_FOLDER, '.py')]
       .sort((a, b) => new Date(b.created) - new Date(a.created));
@@ -208,6 +214,21 @@ app.get('/api/open-folder', (req, res) => {
   res.json({ success: true });
 });
 
+app.get('/api/open-file', (req, res) => {
+  const fileToOpen = req.query.path;
+  if (!fileToOpen || !fs.existsSync(fileToOpen)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+  // Windows-specific highlighting in Explorer
+  if (isWin) {
+    exec(`explorer /select,"${fileToOpen}"`);
+  } else {
+    // Basic fallback for Linux/Mac - just opens the folder
+    exec(`xdg-open "${path.dirname(fileToOpen)}"`);
+  }
+  res.json({ success: true });
+});
+
 // ─────────────────────────────────────────────
 //  PROJECT RUNNER
 // ─────────────────────────────────────────────
@@ -215,9 +236,9 @@ async function runProject(project, id, mode) {
   broadcast('project_start', { project, id });
   const software = project.software || 'matlab';
   if (mode === 'demo') { await runDemo(project, id, software); return; }
-  if (software === 'blender')      await runBlenderProject(project, id);
-  else if (software === 'kicad')   await runKiCadProject(project, id);
-  else                             await runMATLABProject(project, id);
+  if (software === 'blender') await runBlenderProject(project, id);
+  else if (software === 'kicad') await runKiCadProject(project, id);
+  else await runMATLABProject(project, id);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -231,9 +252,16 @@ async function runMATLABProject(project, id) {
   }
   broadcast('matlab_found', { path: matlabPath });
 
+  // Create a clean named project folder
+  const safeName = (project.title || 'Project').replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_').slice(0, 40);
+  const projectDir = path.join(MATLAB_FOLDER, `${safeName}_${id}`);
+  if (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });
+  log(`Project folder: ${projectDir}`);
+  broadcast('console_output', { text: `>> Project folder: ${projectDir}` });
+
   // Build the initial script
-  let scriptContent = buildMATLABContent(project);
-  let scriptPath    = saveMATLABScript(scriptContent, id);
+  let scriptContent = buildMATLABContent(project, projectDir);
+  let scriptPath = saveMATLABScript(scriptContent, id, projectDir);
   broadcast('script_ready', { path: scriptPath, id, software: 'matlab' });
 
   broadcast('software_launched', {
@@ -246,9 +274,10 @@ async function runMATLABProject(project, id) {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     log(`MATLAB run attempt ${attempt}/${maxAttempts}`);
-    broadcast('fix_attempt', { attempt, maxAttempts, msg: attempt === 1
-      ? 'Running MATLAB script...'
-      : `Auto-fixing errors — attempt ${attempt}/${maxAttempts}...`
+    broadcast('fix_attempt', {
+      attempt, maxAttempts, msg: attempt === 1
+        ? 'Running MATLAB script...'
+        : `Auto-fixing errors — attempt ${attempt}/${maxAttempts}...`
     });
 
     // Run MATLAB headlessly to check for errors
@@ -266,19 +295,19 @@ async function runMATLABProject(project, id) {
     log(`MATLAB error on attempt ${attempt}: ${result.error.slice(0, 150)}`);
     broadcast('matlab_error', {
       attempt,
-      error:  result.error,
-      msg:    `Error found — sending to AI for auto-fix (attempt ${attempt}/${maxAttempts})...`,
+      error: result.error,
+      msg: `Error found — sending to AI for auto-fix (attempt ${attempt}/${maxAttempts})...`,
     });
     broadcast('console_output', { text: `!! Error: ${result.error.split('\n')[0]}` });
 
     if (attempt < maxAttempts) {
       // Ask AI to fix the error
-      broadcast('fix_attempt', { attempt: attempt+1, maxAttempts, msg: 'AI is analysing and fixing the error...' });
+      broadcast('fix_attempt', { attempt: attempt + 1, maxAttempts, msg: 'AI is analysing and fixing the error...' });
       try {
         const fixedCode = await fixMATLABError(scriptContent, result.error, attempt);
-        scriptContent   = fixedCode;
-        scriptPath      = saveMATLABScript(scriptContent, id);
-        broadcast('script_fixed', { path: scriptPath, attempt: attempt+1 });
+        scriptContent = fixedCode;
+        scriptPath = saveMATLABScript(scriptContent, id, projectDir);
+        broadcast('script_fixed', { path: scriptPath, attempt: attempt + 1 });
         broadcast('console_output', { text: `>> AI fixed error — retrying...` });
         log(`Script fixed by AI — saved: ${scriptPath}`);
       } catch (e) {
@@ -297,10 +326,36 @@ async function runMATLABProject(project, id) {
   // Stream step progress in UI
   await streamStepProgress(project);
 
+  // Scan for all saved output files in the project folder
+  const savedFiles = [];
+  try {
+    const files = fs.readdirSync(projectDir);
+    files.forEach(f => {
+      if (['.m', '.fig', '.mat', '.jpg', '.png', '.slx'].some(e => f.endsWith(e))) {
+        const filePath = path.join(projectDir, f);
+        const stat = fs.statSync(filePath);
+        savedFiles.push({ name: f, path: filePath, size: stat.size, ext: path.extname(f).toLowerCase() });
+      }
+    });
+  } catch { }
+  if (savedFiles.length > 0) {
+    broadcast('console_output', { text: `\n✓ Saved ${savedFiles.length} file(s) to: ${projectDir}` });
+    savedFiles.forEach(f => {
+      let icon = '📄';
+      if (f.ext === '.fig') icon = '📊';
+      if (f.ext === '.png' || f.ext === '.jpg') icon = '🖼';
+      if (f.ext === '.mat') icon = '💾';
+      broadcast('console_output', { text: `  ${icon} ${f.name}` });
+    });
+    // Broadcast explicit file list so UI can render the Results panel
+    broadcast('matlab_files', { files: savedFiles, projectDir });
+  }
+
   broadcast('project_complete', {
     title: project.title, software: 'matlab',
     steps: project.steps.length, scriptPath,
-    msg:   'MATLAB project complete!',
+    savedFiles,
+    msg: `MATLAB project complete! ${savedFiles.length} file(s) saved.`,
   });
 }
 
@@ -308,9 +363,9 @@ async function runMATLABProject(project, id) {
 //  RUN MATLAB HEADLESSLY — capture errors
 // ─────────────────────────────────────────────
 async function runMATLABHeadless(matlabPath, scriptPath) {
-  const scriptDir  = pyPath(path.dirname(scriptPath));
+  const scriptDir = pyPath(path.dirname(scriptPath));
   const scriptFile = pyPath(scriptPath);
-  const logFile    = scriptPath.replace('.m', '_log.txt');
+  const logFile = scriptPath.replace('.m', '_log.txt');
 
   // Run MATLAB in no-display mode, capture output to log file
   const matlabCmd = isWin
@@ -327,7 +382,7 @@ async function runMATLABHeadless(matlabPath, scriptPath) {
     if (fs.existsSync(logFile)) {
       output = fs.readFileSync(logFile, 'utf8');
     }
-  } catch {}
+  } catch { }
 
   // Also check stderr
   if (result.stderr) output += '\n' + result.stderr;
@@ -360,9 +415,9 @@ async function runMATLABHeadless(matlabPath, scriptPath) {
 //  OPEN MATLAB VISUALLY — user sees results
 // ─────────────────────────────────────────────
 async function openMATLABWithScript(matlabPath, scriptPath) {
-  const scriptDir  = pyPath(path.dirname(scriptPath));
+  const scriptDir = pyPath(path.dirname(scriptPath));
   const scriptFile = pyPath(scriptPath);
-  const batPath    = scriptPath.replace('.m', '_open.bat');
+  const batPath = scriptPath.replace('.m', '_open.bat');
 
   const batContent = [
     '@echo off',
@@ -397,11 +452,9 @@ async function runKiCadProject(project, id) {
   log(`KiCad found: ${kicadPath}`);
 
   // Build the Python script
-  let scriptContent = buildKiCadContent(project);
   const pcbPath = path.join(KICAD_FOLDER, `ultron_${id}.kicad_pcb`).replace(/\\/g, '/');
-  // Inject the real output path where the AI used the dummy path
-  scriptContent = scriptContent.replace(/\/path\/to\/output\.kicad_pcb/g, pcbPath);
-  
+  let scriptContent = buildKiCadContent(project, pcbPath);
+
   const scriptPath = saveKiCadScript(scriptContent, id);
   broadcast('script_ready', { path: scriptPath, id, software: 'kicad' });
   log(`KiCad script saved: ${scriptPath}`);
@@ -412,9 +465,10 @@ async function runKiCadProject(project, id) {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     log(`KiCad run attempt ${attempt}/${maxAttempts}`);
-    broadcast('fix_attempt', { attempt, maxAttempts, msg: attempt === 1
-      ? 'Generating KiCad board via embedded Python engine...'
-      : `Auto-fixing errors — attempt ${attempt}/${maxAttempts}...`
+    broadcast('fix_attempt', {
+      attempt, maxAttempts, msg: attempt === 1
+        ? 'Generating KiCad board via embedded Python engine...'
+        : `Auto-fixing errors — attempt ${attempt}/${maxAttempts}...`
     });
 
     const logPath = scriptPath.replace('.py', '_log.txt');
@@ -424,13 +478,16 @@ async function runKiCadProject(project, id) {
     const result = await runCmd(headlessCmd, 45000);
 
     let output = '';
-    try { if (fs.existsSync(logPath)) output = fs.readFileSync(logPath, 'utf8'); } catch {}
+    try { if (fs.existsSync(logPath)) output = fs.readFileSync(logPath, 'utf8'); } catch { }
 
     const hasError = output.toLowerCase().includes('error') || output.toLowerCase().includes('traceback') || output.includes('STEP_ERROR');
 
-    output.split('\n').filter(l=>l.trim()).slice(0,10).forEach(line => {
-      broadcast('console_output', { text: (line.toLowerCase().includes('error')||line.toLowerCase().includes('traceback') ? '!! ' : '>> ') + line.trim() });
-    });
+    const errLines = output.split('\n').filter(l => l.trim().toLowerCase().includes('error') || l.trim().includes('STEP_ERROR') || l.trim().toLowerCase().includes('traceback'));
+    if (errLines.length > 0) {
+      errLines.slice(-10).forEach(line => broadcast('console_output', { text: '!! ' + line.trim() }));
+    } else {
+      output.split('\n').filter(l => l.trim()).slice(-10).forEach(line => broadcast('console_output', { text: '>> ' + line.trim() }));
+    }
 
     if (!hasError) {
       log('KiCad script validated — no errors!');
@@ -438,19 +495,17 @@ async function runKiCadProject(project, id) {
       break;
     }
 
-    log(`KiCad error on attempt ${attempt}: ${output.slice(0, 150)}`);
-    broadcast('console_output', { text: `!! Error: ${output.split('\n')[0]}` });
+    log(`KiCad error on attempt ${attempt}: ${output.slice(-150).replace(/\n/g, ' ')}`);
+    broadcast('console_output', { text: `!! Attempting to auto-fix KiCad script...` });
 
     if (attempt < maxAttempts) {
-      broadcast('fix_attempt', { attempt: attempt+1, maxAttempts, msg: 'AI is analysing and fixing the error...' });
+      broadcast('fix_attempt', { attempt: attempt + 1, maxAttempts, msg: 'AI is analysing and fixing the error...' });
       try {
         const { fixKiCadError } = require('./agents/groq-agent');
         const fixedCode = await fixKiCadError(scriptContent, output, attempt);
-        scriptContent   = fixedCode;
-        // Reinject the pcbPath again just in case the AI messed it up
-        scriptContent = scriptContent.replace(/\/path\/to\/output\.kicad_pcb/g, pcbPath);
+        scriptContent = fixedCode;
         fs.writeFileSync(scriptPath, scriptContent, 'utf8');
-        broadcast('script_fixed', { path: scriptPath, attempt: attempt+1 });
+        broadcast('script_fixed', { path: scriptPath, attempt: attempt + 1 });
         broadcast('console_output', { text: `>> AI fixed error — retrying...` });
         log(`KiCad script fixed by AI — saved`);
       } catch (e) {
@@ -478,7 +533,7 @@ async function runKiCadProject(project, id) {
   });
 
   broadcast('fix_attempt', {
-    attempt:1, maxAttempts:1,
+    attempt: 1, maxAttempts: 1,
     msg: '✓ Circuit generated! Launching pcbnew editor...',
     success: true,
   });
@@ -486,27 +541,27 @@ async function runKiCadProject(project, id) {
   await streamStepProgress(project);
 
   broadcast('project_complete', {
-    title:      project.title,
-    software:   'kicad',
-    steps:      project.steps.length,
+    title: project.title,
+    software: 'kicad',
+    steps: project.steps.length,
     scriptPath,
-    msg:        'KiCad project ready! Load the script in KiCad Scripting Console to build the schematic.',
+    msg: 'KiCad project ready! Load the script in KiCad Scripting Console to build the schematic.',
   });
 }
 
 // ─────────────────────────────────────────────
 //  BUILD KICAD SCRIPT
 // ─────────────────────────────────────────────
-function buildKiCadContent(project) {
+function buildKiCadContent(project, pcbPath) {
   const title = (project.title || 'Ultron Project').replace(/["']/g, '');
-  const schPath = path.join(KICAD_FOLDER, 'ultron_schematic.kicad_sch').replace(/\\/g,'/');
+  const schPath = path.join(KICAD_FOLDER, 'ultron_schematic.kicad_sch').replace(/\\/g, '/');
 
   const stepLines = [];
   project.steps.forEach((step, i) => {
-    const label = (step.label||'').replace(/"/g,"'");
-    const cmdLines = (step.cmd||'').split('\n').map(l => '    ' + l);
-    stepLines.push(`    # Step ${i+1}/${project.steps.length}: ${label}`);
-    stepLines.push(`    print("Step ${i+1}/${project.steps.length}: ${label}")`);
+    const label = (step.label || '').replace(/"/g, "'");
+    const cmdLines = (step.cmd || '').split('\n').map(l => '    ' + l);
+    stepLines.push(`    # Step ${i + 1}/${project.steps.length}: ${label}`);
+    stepLines.push(`    print("Step ${i + 1}/${project.steps.length}: ${label}")`);
     stepLines.push('    try:');
     cmdLines.forEach(l => stepLines.push('    ' + l));
     stepLines.push(`    except Exception as _e:`);
@@ -526,6 +581,8 @@ function buildKiCadContent(project) {
 import pcbnew
 import os
 import math
+
+PCBOUT_PATH = r"${pcbPath}"
 
 def run_ultron_kicad():
     print("========================================")
@@ -555,35 +612,59 @@ function saveKiCadScript(content, id) {
 }
 
 
-function buildMATLABContent(project) {
+function buildMATLABContent(project, projectDir) {
+  const safeDir = (projectDir || MATLAB_FOLDER).replace(/\\/g, '\\\\');
   const lines = [];
   lines.push(`%% Ultron AI — ${project.title}`);
   lines.push(`%% ${project.description || ''}`);
   lines.push(`%% Generated: ${new Date().toLocaleString()}`);
   lines.push('');
+  lines.push(`PROJECT_DIR = '${safeDir}';`);
+  lines.push(`if ~exist(PROJECT_DIR, 'dir'), mkdir(PROJECT_DIR); end`);
+  lines.push(`cd(PROJECT_DIR);`);
+  lines.push('');
   lines.push(`disp('========================================');`);
-  lines.push(`disp('  Ultron AI: ${(project.title||'').replace(/'/g,"''")}');`);
+  lines.push(`disp('  Ultron AI: ${(project.title || '').replace(/'/g, "''")}');`);
   lines.push(`disp('========================================');`);
   lines.push('');
 
+  let figCount = 0;
   project.steps.forEach((step, i) => {
-    lines.push(`%% Step ${i+1}/${project.steps.length}: ${step.label}`);
-    lines.push(`disp(['Step ${i+1}/${project.steps.length}: ${(step.label||'').replace(/'/g,"''")}']);`);
+    lines.push(`%% Step ${i + 1}/${project.steps.length}: ${step.label}`);
+    lines.push(`disp(['Step ${i + 1}/${project.steps.length}: ${(step.label || '').replace(/'/g, "''")}']);`);
     lines.push('');
     lines.push(step.cmd || '');
     lines.push('');
+    // After each step that likely creates a figure: save it
+    const stepLower = (step.cmd || '').toLowerCase();
+    if (stepLower.includes('figure') || stepLower.includes('plot') || stepLower.includes('subplot') || stepLower.includes('surf') || stepLower.includes('mesh')) {
+      figCount++;
+      lines.push(`try`);
+      lines.push(`  fig_handles = findall(0,'Type','figure');`);
+      lines.push(`  for _fi = 1:length(fig_handles)`);
+      lines.push(`    fig_name = fullfile(PROJECT_DIR, sprintf('plot_step${i + 1}_fig%d.fig', _fi));`);
+      lines.push(`    savefig(fig_handles(_fi), fig_name);`);
+      lines.push(`    saveas(fig_handles(_fi), strrep(fig_name,'.fig','.png'));`);
+      lines.push(`  end`);
+      lines.push(`catch _fe, disp(['Fig save warn: ' _fe.message]); end`);
+    }
     lines.push(`disp('  Done.');`);
     lines.push('');
   });
 
+  // Save final workspace
+  lines.push(`%% Save workspace and script`);
+  lines.push(`try, save(fullfile(PROJECT_DIR, 'workspace.mat')); catch, end`);
   lines.push(`disp('========================================');`);
   lines.push(`disp('  Ultron AI: Project Complete!');`);
+  lines.push(`disp(['  Files saved to: ' PROJECT_DIR]);`);
   lines.push(`disp('========================================');`);
   return lines.join('\n');
 }
 
-function saveMATLABScript(content, id) {
-  const scriptPath = path.join(MATLAB_FOLDER, `ultron_${id}.m`);
+function saveMATLABScript(content, id, projectDir) {
+  const dir = projectDir || MATLAB_FOLDER;
+  const scriptPath = path.join(dir, `ultron_${id}.m`);
   fs.writeFileSync(scriptPath, content, 'utf8');
   log(`MATLAB script saved: ${scriptPath}`);
   return scriptPath;
@@ -604,7 +685,7 @@ async function runBlenderProject(project, id) {
 
   // Build and save the script
   const scriptContent = buildBlenderContent(project);
-  const scriptPath    = saveBlenderScript(scriptContent, id);
+  const scriptPath = saveBlenderScript(scriptContent, id);
   broadcast('script_ready', { path: scriptPath, id, software: 'blender' });
   log(`Blender script saved: ${scriptPath}`);
 
@@ -616,8 +697,8 @@ async function runBlenderProject(project, id) {
 
   // bat file + cmd.exe — confirmed working on this Windows machine
   // Also run headless first to capture output/errors for debugging
-  const logPath    = scriptPath.replace('.py', '_output.txt');
-  const batPath    = scriptPath.replace('.py', '_launch.bat');
+  const logPath = scriptPath.replace('.py', '_output.txt');
+  const batPath = scriptPath.replace('.py', '_launch.bat');
 
   // First run headless to capture any errors
   const headlessCmd = '"' + blenderPath + '" --background --python "' + scriptPath + '" > "' + logPath + '" 2>&1';
@@ -626,7 +707,7 @@ async function runBlenderProject(project, id) {
   exec(headlessCmd, { timeout: 30000 }, (err, stdout, stderr) => {
     // Read the log
     let output = '';
-    try { output = require('fs').readFileSync(logPath, 'utf8'); } catch {}
+    try { output = require('fs').readFileSync(logPath, 'utf8'); } catch { }
 
     // Show output in browser console
     const lines = output.split('\n').filter(l => l.trim());
@@ -644,11 +725,11 @@ async function runBlenderProject(project, id) {
     require('fs').writeFileSync(batPath, batContent);
     exec('cmd.exe /c "' + batPath + '"', (e2) => {
       if (e2) log('Blender visual launch error: ' + e2.message, 'warn');
-      else    log('Blender opened visually');
+      else log('Blender opened visually');
     });
   });
 
-    broadcast('software_launched', {
+  broadcast('software_launched', {
     software: 'blender',
     msg: 'Blender is opening on your desktop! The 3D model will build automatically.',
   });
@@ -663,11 +744,11 @@ async function runBlenderProject(project, id) {
   await streamStepProgress(project);
 
   broadcast('project_complete', {
-    title:      project.title,
-    software:   'blender',
-    steps:      project.steps.length,
+    title: project.title,
+    software: 'blender',
+    steps: project.steps.length,
     scriptPath,
-    msg:        'Blender project complete! Your 3D model is built in the viewport.',
+    msg: 'Blender project complete! Your 3D model is built in the viewport.',
   });
 }
 
@@ -681,13 +762,13 @@ function buildMATLABContent(project) {
   lines.push(`%% Generated: ${new Date().toLocaleString()}`);
   lines.push('');
   lines.push(`disp('========================================');`);
-  lines.push(`disp('  Ultron AI: ${(project.title||'').replace(/'/g,"''")}');`);
+  lines.push(`disp('  Ultron AI: ${(project.title || '').replace(/'/g, "''")}');`);
   lines.push(`disp('========================================');`);
   lines.push('');
 
   project.steps.forEach((step, i) => {
-    lines.push(`%% Step ${i+1}/${project.steps.length}: ${step.label}`);
-    lines.push(`disp(['Step ${i+1}/${project.steps.length}: ${(step.label||'').replace(/'/g,"''")}']);`);
+    lines.push(`%% Step ${i + 1}/${project.steps.length}: ${step.label}`);
+    lines.push(`disp(['Step ${i + 1}/${project.steps.length}: ${(step.label || '').replace(/'/g, "''")}']);`);
     lines.push('');
     lines.push(step.cmd || '');
     lines.push('');
@@ -723,22 +804,22 @@ function buildBlenderContent(project) {
     const label = (step.label || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
     const cmdLines = (step.cmd || '').split('\n').map(l => '    ' + l);
 
-    stepLines.push(`    # ── Step ${i+1}/${project.steps.length}: ${label} ──`);
-    stepLines.push(`    print("Step ${i+1}/${project.steps.length}: ${label}")`);
+    stepLines.push(`    # ── Step ${i + 1}/${project.steps.length}: ${label} ──`);
+    stepLines.push(`    print("Step ${i + 1}/${project.steps.length}: ${label}")`);
     stepLines.push('    try:');
     // Indent each code line by 8 spaces (inside try block)
     cmdLines.forEach(line => {
       stepLines.push('    ' + line);
     });
     stepLines.push(`    except Exception as _e:`);
-    stepLines.push(`        print("STEP_ERROR in step ${i+1}: " + str(_e))`);
+    stepLines.push(`        print("STEP_ERROR in step ${i + 1}: " + str(_e))`);
     stepLines.push(`        import traceback`);
     stepLines.push(`        traceback.print_exc()`);
-    stepLines.push(`    print("  Step ${i+1} done.")`);
+    stepLines.push(`    print("  Step ${i + 1} done.")`);
     stepLines.push('');
   });
 
-  const title    = (project.title || 'Ultron Project').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const title = (project.title || 'Ultron Project').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const blendOut = path.join(BLENDER_FOLDER, 'ultron_model.blend').replace(/\\/g, '/');
 
   return `# Ultron AI - ${title}
@@ -807,11 +888,11 @@ function saveBlenderScript(content, id) {
 // ─────────────────────────────────────────────
 async function streamStepProgress(project) {
   for (let i = 0; i < project.steps.length; i++) {
-    const step  = project.steps[i];
+    const step = project.steps[i];
     const delay = estimateStepTime(step, project.software);
     await sleep(delay * 0.3);
     broadcast('step_update', { stepIndex: i, label: step.label, status: 'running', total: project.steps.length });
-    broadcast('console_output', { text: `>> [${i+1}/${project.steps.length}] ${step.label}` });
+    broadcast('console_output', { text: `>> [${i + 1}/${project.steps.length}] ${step.label}` });
     await sleep(delay * 0.7);
     broadcast('step_update', { stepIndex: i, label: step.label, status: 'done', total: project.steps.length });
     if (step.produces) broadcast('console_output', { text: `   -> ${step.produces}` });
@@ -822,8 +903,9 @@ async function streamStepProgress(project) {
 //  DEMO MODE
 // ─────────────────────────────────────────────
 async function runDemo(project, id, software) {
-  broadcast('software_launched', { software,
-    msg:  `Demo mode — showing ${software === 'blender' ? 'Blender' : 'MATLAB'} execution`,
+  broadcast('software_launched', {
+    software,
+    msg: `Demo mode — showing ${software === 'blender' ? 'Blender' : 'MATLAB'} execution`,
     demo: true,
   });
 
@@ -833,12 +915,12 @@ async function runDemo(project, id, software) {
   broadcast('script_ready', { path: scriptPath, id, software, demo: true });
 
   for (let i = 0; i < project.steps.length; i++) {
-    const step  = project.steps[i];
+    const step = project.steps[i];
     const delay = estimateStepTime(step, software);
     await sleep(delay * 0.4);
     broadcast('step_update', { stepIndex: i, label: step.label, status: 'running', total: project.steps.length });
     broadcast('console_output', { text: `>> ${step.label}` });
-    const lines = (step.cmd||'').split('\n')
+    const lines = (step.cmd || '').split('\n')
       .filter(l => l.trim() && !l.trim().startsWith('#') && !l.trim().startsWith('%'))
       .slice(0, 3);
     for (const line of lines) { await sleep(120); broadcast('console_output', { text: `   ${line.trim()}` }); }
@@ -858,16 +940,16 @@ async function runDemo(project, id, software) {
 //  ESTIMATE STEP TIME
 // ─────────────────────────────────────────────
 function estimateStepTime(step, software) {
-  const code = (step.cmd||'').toLowerCase();
+  const code = (step.cmd || '').toLowerCase();
   if (software === 'blender') {
-    if (code.includes('subdivision') || code.includes('boolean')) return 1800 + Math.random()*800;
-    if (code.includes('material') || code.includes('render'))     return 1400 + Math.random()*600;
-    return 900 + Math.random()*500;
+    if (code.includes('subdivision') || code.includes('boolean')) return 1800 + Math.random() * 800;
+    if (code.includes('material') || code.includes('render')) return 1400 + Math.random() * 600;
+    return 900 + Math.random() * 500;
   }
-  if (code.includes('for ') || code.includes('while ')) return 2000 + Math.random()*1000;
-  if (code.includes('figure') || code.includes('plot'))  return 1400 + Math.random()*600;
-  if (code.includes('ode45') || code.includes('fft'))    return 1600 + Math.random()*800;
-  return 800 + Math.random()*500;
+  if (code.includes('for ') || code.includes('while ')) return 2000 + Math.random() * 1000;
+  if (code.includes('figure') || code.includes('plot')) return 1400 + Math.random() * 600;
+  if (code.includes('ode45') || code.includes('fft')) return 1600 + Math.random() * 800;
+  return 800 + Math.random() * 500;
 }
 
 // ─────────────────────────────────────────────
@@ -876,20 +958,20 @@ function estimateStepTime(step, software) {
 server.listen(PORT, async () => {
   const [matlabPath, blenderPath, kicadPath] = await Promise.all([findMATLAB(), findBlender(), findKiCad()]);
   const geminiReady = !!(config.GEMINI_API_KEY && config.GEMINI_API_KEY !== 'YOUR_GEMINI_API_KEY_HERE');
-  const groqReady   = !!(config.GROQ_API_KEY   && config.GROQ_API_KEY   !== 'YOUR_GROQ_API_KEY_HERE');
-  const activeAI    = geminiReady ? 'Gemini ' + (config.GEMINI_MODEL||'2.0-flash') : groqReady ? 'Groq Llama 3.3' : 'none';
+  const groqReady = !!(config.GROQ_API_KEY && config.GROQ_API_KEY !== 'YOUR_GROQ_API_KEY_HERE');
+  const activeAI = geminiReady ? 'Gemini ' + (config.GEMINI_MODEL || '2.0-flash') : groqReady ? 'Groq Llama 3.3' : 'none';
 
   console.log('\n  ╔══════════════════════════════════════════════════════════════╗');
   console.log('  ║   Ultron AI — MATLAB + Blender + KiCad Engineering Copilot  ║');
   console.log(`  ║   http://localhost:${PORT}                                        ║`);
   console.log('  ╠══════════════════════════════════════════════════════════════╣');
   console.log(`  ║  Active AI : ${activeAI}`);
-  console.log(`  ║  Gemini    : ${geminiReady ? '✓ ready (primary)'  : '✗ not set'}`);
-  console.log(`  ║  Groq      : ${groqReady   ? '✓ ready (fallback)' : '✗ not set'}`);
-  console.log(`  ║  MATLAB    : ${matlabPath  ? '✓ ' + matlabPath.slice(0,42) : '✗ not found'}`);
-  console.log(`  ║  Blender   : ${blenderPath ? '✓ ' + blenderPath.slice(0,42) : '✗ not found'}`);
-  console.log(`  ║  KiCad     : ${kicadPath   ? '✓ ' + kicadPath.slice(0,42)   : '✗ not found'}`);
-  console.log(`  ║  Fix loop  : up to ${config.MAX_FIX_ATTEMPTS||3} auto-fix attempts per project`);
+  console.log(`  ║  Gemini    : ${geminiReady ? '✓ ready (primary)' : '✗ not set'}`);
+  console.log(`  ║  Groq      : ${groqReady ? '✓ ready (fallback)' : '✗ not set'}`);
+  console.log(`  ║  MATLAB    : ${matlabPath ? '✓ ' + matlabPath.slice(0, 42) : '✗ not found'}`);
+  console.log(`  ║  Blender   : ${blenderPath ? '✓ ' + blenderPath.slice(0, 42) : '✗ not found'}`);
+  console.log(`  ║  KiCad     : ${kicadPath ? '✓ ' + kicadPath.slice(0, 42) : '✗ not found'}`);
+  console.log(`  ║  Fix loop  : up to ${config.MAX_FIX_ATTEMPTS || 3} auto-fix attempts per project`);
   console.log('  ╚══════════════════════════════════════════════════════════════╝\n');
 
   if (!geminiReady && !groqReady) {
@@ -897,7 +979,7 @@ server.listen(PORT, async () => {
     console.log('  Free Gemini: https://aistudio.google.com/apikey');
     console.log('  Free Groq:   https://console.groq.com\n');
   }
-  if (!matlabPath)  console.log('  ⚠  MATLAB not found — check MATLAB_PATHS in config.js\n');
-  if (!kicadPath)   console.log('  ⚠  KiCad not found — check KICAD_PATHS in config.js\n');
+  if (!matlabPath) console.log('  ⚠  MATLAB not found — check MATLAB_PATHS in config.js\n');
+  if (!kicadPath) console.log('  ⚠  KiCad not found — check KICAD_PATHS in config.js\n');
   if (!blenderPath) console.log('  ⚠  Blender not found — check BLENDER_PATHS in config.js\n');
 });
